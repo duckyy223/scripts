@@ -176,7 +176,19 @@ infiniteMoneyToggle:OnChanged(function()
     if cheatState.infiniteMoney then
         spawn(function()
             while Options.infiniteMoneyToggle.Value do
-                giveMoney(999999999)
+                -- Método directo y garantizado
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                    for _, stat in pairs(leaderstats:GetChildren()) do
+                        if stat:IsA("IntValue") or stat:IsA("NumberValue") then
+                            local name = stat.Name:lower()
+                            if name:match("money") or name:match("cash") or name:match("coin") or name:match("moneda") then
+                                stat.Value = 999999999
+                                break
+                            end
+                        end
+                    end
+                end
                 wait(0.1)
             end
         end)
@@ -185,15 +197,17 @@ end)
 
 godModeToggle:OnChanged(function()
     cheatState.godMode = Options.godModeToggle.Value
-    if cheatState.godMode then
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.MaxHealth = math.huge
-            char.Humanoid.Health = math.huge
-        end
-    else
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.MaxHealth = 100
-            char.Humanoid.Health = 100
+    local humanoid = char:FindFirstChild("Humanoid")
+    if humanoid then
+        if cheatState.godMode then
+            humanoid.MaxHealth = math.huge
+            humanoid.Health = math.huge
+            -- Hacerlo invulnerable a todo daño
+            humanoid:ChangeState(Enum.HumanoidStateType.PlatformStanding)
+        else
+            humanoid.MaxHealth = 100
+            humanoid.Health = 100
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
         end
     end
 end)
@@ -201,33 +215,49 @@ end)
 espToggle:OnChanged(function()
     cheatState.esp = Options.espToggle.Value
     if cheatState.esp then
+        -- Limpiar ESP anterior
+        for _, e in pairs(Workspace:GetDescendants()) do
+            if e:IsA("BoxHandleAdornment") then
+                e:Destroy()
+            end
+        end
+        
         spawn(function()
             while Options.espToggle.Value do
                 for _, plr in pairs(Players:GetPlayers()) do
-                    if plr ~= player then
+                    if plr ~= player and plr.Character then
                         local char = plr.Character
-                        if char then
-                            for _, part in pairs(char:GetChildren()) do
-                                if part:IsA("BasePart") then
-                                    local espBox = Instance.new("BoxHandleAdornment")
-                                    espBox.Size = part.Size
-                                    espBox.Color3 = Color3.new(1, 0, 0)
-                                    espBox.Transparency = 0.5
-                                    espBox.AlwaysOnTop = true
-                                    espBox.ZIndex = 10
-                                    espBox.Adornee = part
-                                    espBox.Parent = part
-                                end
+                        -- Eliminar ESP anterior de este jugador
+                        for _, part in pairs(char:GetChildren()) do
+                            local existingESP = part:FindFirstChild("CheatESP")
+                            if existingESP then
+                                existingESP:Destroy()
+                            end
+                        end
+                        
+                        -- Crear nuevo ESP
+                        for _, part in pairs(char:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                local espBox = Instance.new("BoxHandleAdornment")
+                                espBox.Name = "CheatESP"
+                                espBox.Size = part.Size
+                                espBox.Color3 = plr.Team and plr.Team.TeamColor.Color or Color3.new(1, 0, 0)
+                                espBox.Transparency = 0.3
+                                espBox.AlwaysOnTop = true
+                                espBox.ZIndex = 10
+                                espBox.Adornee = part
+                                espBox.Parent = part
                             end
                         end
                     end
                 end
-                wait(1)
+                wait(2)
             end
         end)
     else
+        -- Limpiar todo el ESP
         for _, e in pairs(Workspace:GetDescendants()) do
-            if e:IsA("BoxHandleAdornment") then
+            if e:IsA("BoxHandleAdornment") and e.Name == "CheatESP" then
                 e:Destroy()
             end
         end
@@ -237,17 +267,31 @@ end)
 xrayToggle:OnChanged(function()
     cheatState.xray = Options.xrayToggle.Value
     if cheatState.xray then
+        -- Hacer todo transparente excepto jugadores
         for _, part in pairs(Workspace:GetDescendants()) do
             if part:IsA("BasePart") and not part.Parent:FindFirstChild("Humanoid") then
-                part.Transparency = 0.7
+                if part.Name ~= "Baseplate" then
+                    part.Transparency = 0.7
+                end
             end
         end
+        -- Iluminación mejorada
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
     else
+        -- Restaurar transparencia
         for _, part in pairs(Workspace:GetDescendants()) do
-            if part:IsA("BasePart") then
+            if part:IsA("BasePart") and not part.Parent:FindFirstChild("Humanoid") then
                 part.Transparency = 0
             end
         end
+        -- Restaurar iluminación
+        Lighting.Brightness = 1
+        Lighting.ClockTime = 12
+        Lighting.FogEnd = 1000
+        Lighting.GlobalShadows = true
     end
 end)
 
@@ -255,14 +299,32 @@ invisibleToggle:OnChanged(function()
     cheatState.invisible = Options.invisibleToggle.Value
     if cheatState.invisible then
         for _, part in pairs(char:GetChildren()) do
-            if part:IsA("BasePart") then
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                 part.Transparency = 1
+            end
+        end
+        -- También hacer invisible el humanoid
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            for _, part in pairs(humanoid:GetAccessories()) do
+                if part:FindFirstChild("Handle") then
+                    part.Handle.Transparency = 1
+                end
             end
         end
     else
         for _, part in pairs(char:GetChildren()) do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                 part.Transparency = 0
+            end
+        end
+        -- Restaurar accesorios
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            for _, part in pairs(humanoid:GetAccessories()) do
+                if part:FindFirstChild("Handle") then
+                    part.Handle.Transparency = 0
+                end
             end
         end
     end
@@ -281,20 +343,33 @@ autoFarmToggle:OnChanged(function()
         spawn(function()
             while Options.autoFarmToggle.Value do
                 pcall(function()
+                    -- Buscar casas y objetos interactuables
                     for _, obj in pairs(Workspace:GetChildren()) do
                         if not Options.autoFarmToggle.Value then break end
-                        if obj.Name:match("Casa") or obj.Name:match("House") then
+                        -- Buscar casas
+                        if obj.Name:match("Casa") or obj.Name:match("House") or obj.Name:match("Home") then
                             local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt")
                             if proximityPrompt then
-                                humPart.CFrame = obj.CFrame
+                                -- Teletransportar a la casa
+                                humPart.CFrame = obj.CFrame + Vector3.new(0, 5, 0)
                                 wait(0.5)
+                                -- Activar prompt
                                 fireproximityprompt(proximityPrompt)
+                                wait(1)
                             end
                         end
-                        wait(1)
+                        -- Buscar coleccionables
+                        if obj.Name:match("Money") or obj.Name:match("Coin") or obj.Name:match("Cash") then
+                            humPart.CFrame = obj.CFrame
+                            wait(0.3)
+                            local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+                            if prompt then
+                                fireproximityprompt(prompt)
+                            end
+                        end
                     end
                 end)
-                wait(0.5)
+                wait(2)
             end
         end)
     end
@@ -306,6 +381,12 @@ autoClickToggle:OnChanged(function()
         spawn(function()
             while Options.autoClickToggle.Value do
                 pcall(function()
+                    -- Auto click universal
+                    if game:GetService("VirtualUser") then
+                        game:GetService("VirtualUser"):CaptureController()
+                        game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+                    end
+                    -- También intentar con mouse1click si está disponible
                     if mouse1click then
                         mouse1click()
                     end
@@ -318,17 +399,46 @@ end)
 
 instantUpgradeToggle:OnChanged(function()
     cheatState.instantUpgrade = Options.instantUpgradeToggle.Value
-    -- Lógica para mejoras instantáneas
     if cheatState.instantUpgrade then
-        print("Mejoras instantáneas activadas")
+        -- Mejoras instantáneas directas
+        pcall(function()
+            -- Buscar y mejorar todo lo posible
+            for _, obj in pairs(Workspace:GetChildren()) do
+                if obj.Name:match("Upgrade") or obj.Name:match("Mejora") then
+                    local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt then
+                        humPart.CFrame = obj.CFrame
+                        wait(0.3)
+                        fireproximityprompt(prompt)
+                    end
+                end
+            end
+        end)
     end
 end)
 
 unlockAllToggle:OnChanged(function()
     cheatState.unlockAll = Options.unlockAllToggle.Value
-    -- Lógica para desbloquear todo
     if cheatState.unlockAll then
-        print("Todo desbloqueado")
+        -- Desbloquear todo instantáneamente
+        pcall(function()
+            -- Método directo: forzar desbloqueo
+            local playerData = player:FindFirstChild("Data") or player:FindFirstChild("PlayerData")
+            if playerData then
+                -- Desbloquear casas
+                local houses = playerData:FindFirstChild("Houses") or playerData:FindFirstChild("UnlockedHouses")
+                if houses then
+                    for i = 1, 11 do
+                        local house = houses:FindFirstChild("CN" .. i)
+                        if house then
+                            house.Value = true
+                        end
+                    end
+                end
+                -- Dar dinero máximo
+                giveMoney(999999999)
+            end
+        end)
     end
 end)
 
@@ -369,31 +479,28 @@ local jumpInput = Tabs.Player:CreateInput("jumpInput", {
             end
         end
     end
-})
 
 -- Funciones Player
 speedToggle:OnChanged(function()
     cheatState.speedBoost = Options.speedToggle.Value
-    if cheatState.speedBoost then
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = tonumber(Options.speedInput.Value) or 100
-        end
-    else
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = 16
+    local humanoid = char:FindFirstChild("Humanoid")
+    if humanoid then
+        if cheatState.speedBoost then
+            humanoid.WalkSpeed = tonumber(Options.speedInput.Value) or 100
+        else
+            humanoid.WalkSpeed = 16
         end
     end
 end)
 
 jumpToggle:OnChanged(function()
     cheatState.jumpBoost = Options.jumpToggle.Value
-    if cheatState.jumpBoost then
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = tonumber(Options.jumpInput.Value) or 200
-        end
-    else
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = 50
+    local humanoid = char:FindFirstChild("Humanoid")
+    if humanoid then
+        if cheatState.jumpBoost then
+            humanoid.JumpPower = tonumber(Options.jumpInput.Value) or 200
+        else
+            humanoid.JumpPower = 50
         end
     end
 end)
@@ -403,7 +510,7 @@ noclipToggle:OnChanged(function()
     if cheatState.noclip then
         getgenv().Noclipping = RunService.Stepped:Connect(function()
             for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") and part.CanCollide == true then
+                if part:IsA("BasePart") then
                     part.CanCollide = false
                 end
             end
@@ -413,7 +520,7 @@ noclipToggle:OnChanged(function()
             getgenv().Noclipping:Disconnect()
             getgenv().Noclipping = nil
         end
-        -- Restaurar colisión
+        -- Restaurar colisión inmediatamente
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
@@ -425,6 +532,7 @@ end)
 flyToggle:OnChanged(function()
     cheatState.fly = Options.flyToggle.Value
     if cheatState.fly then
+        -- Crear partes de vuelo
         local flyPart = Instance.new("Part")
         flyPart.Name = "FlyPart"
         flyPart.Size = Vector3.new(2, 1, 1)
@@ -437,11 +545,34 @@ flyToggle:OnChanged(function()
         flyWeld.Part1 = flyPart
         flyWeld.Parent = char.HumanoidRootPart
         
+        -- Bucle de vuelo mejorado
         getgenv().Flying = RunService.Heartbeat:Connect(function()
             if Options.flyToggle.Value then
                 local cam = Workspace.CurrentCamera
                 local direction = cam.CFrame.LookVector
-                char.HumanoidRootPart.Velocity = direction * 50
+                local moveVector = Vector3.new()
+                
+                -- Controles de vuelo con teclas
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    moveVector = moveVector + direction
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    moveVector = moveVector - direction
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    moveVector = moveVector + Vector3.new(-direction.Z, 0, direction.X)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    moveVector = moveVector + Vector3.new(direction.Z, 0, -direction.X)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    moveVector = moveVector + Vector3.new(0, 1, 0)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                    moveVector = moveVector + Vector3.new(0, -1, 0)
+                end
+                
+                char.HumanoidRootPart.Velocity = moveVector * 50
             end
         end)
     else
@@ -449,10 +580,69 @@ flyToggle:OnChanged(function()
             getgenv().Flying:Disconnect()
             getgenv().Flying = nil
         end
+        -- Limpiar partes de vuelo
         local flyPart = char:FindFirstChild("FlyPart")
         if flyPart then
             flyPart:Destroy()
         end
+        char.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end)
+
+instantRebirthToggle:OnChanged(function()
+    cheatState.instantRebirth = Options.instantRebirthToggle.Value
+    if cheatState.instantRebirth then
+        -- Rebirth instantáneo directo
+        pcall(function()
+            -- Buscar y ejecutar comando de rebirth
+            for _, obj in pairs(Workspace:GetChildren()) do
+                if obj.Name:match("Rebirth") or obj.Name:match("Renacer") then
+                    local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt then
+                        humPart.CFrame = obj.CFrame
+                        wait(0.3)
+                        fireproximityprompt(prompt)
+                    end
+                end
+            end
+            -- También intentar con RemoteEvents
+            local rebirthRemote = ReplicatedStorage:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Rebirth")
+            if rebirthRemote then
+                rebirthRemote:FireServer()
+            end
+        end)
+    end
+end)
+
+maxStatsToggle:OnChanged(function()
+    cheatState.maxStats = Options.maxStatsToggle.Value
+    if cheatState.maxStats then
+        -- Estadísticas máximas instantáneas
+        pcall(function()
+            -- Dinero máximo
+            giveMoney(999999999)
+            -- Rebirth máximo
+            local rebirthRemote = ReplicatedStorage:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Rebirth")
+            if rebirthRemote then
+                for i = 1, 100 do
+                    rebirthRemote:FireServer()
+                    wait(0.1)
+                end
+            end
+            -- Desbloquear todo
+            local playerData = player:FindFirstChild("Data") or player:FindFirstChild("PlayerData")
+            if playerData then
+                local houses = playerData:FindFirstChild("Houses") or playerData:FindFirstChild("UnlockedHouses")
+                if houses then
+                    for i = 1, 11 do
+                        local house = houses:FindFirstChild("CN" .. i)
+                        if house then
+                            house.Value = true
+                        end
+                    end
+                end
+            end
+        end)
     end
 end)
 
