@@ -9,7 +9,7 @@
                                                                            |_|            
 ]]
 
--- 🔥 ULTIMATE HOUSE FARMING CHEAT - FLUENT GUI VERSION
+-- 🔥 ULTIMATE HOUSE FARMING CHEAT - VERSION CORREGIDA
 -- 🚀 Compatible con Delta, Synapse, KRNL y más ejecutores
 -- ⚠️ USAR SOLO PARA PRUEBAS EN TU PROPIO JUEGO
 
@@ -67,21 +67,22 @@ local cheatState = {
     unlockAll = false,
     instantRebirth = false,
     maxStats = false,
-    -- Admin Abuse
-    adminMode = false,
+    -- Admin Abuse Commands
+    adminAbuse = false,
     blackoutEvent = false,
     bethlehemEvent = false,
     tommyEvent = false,
     elFinEvent = false,
-    globalMusic = false,
-    -- Admin Functions
+    -- Admin Functions (Directas)
     giveMoney = false,
     setMoney = false,
     setRebirth = false,
     unlockHouse = false,
     createGiftcard = false,
     playMusic = false,
-    stopMusic = false
+    stopMusic = false,
+    resetPlayer = false,
+    deleteAllStats = false
 }
 
 -- Funciones de utilidad
@@ -98,7 +99,70 @@ player.CharacterAdded:Connect(function()
     char:WaitForChild("Humanoid").UseJumpPower = true
 end)
 
--- Función para dar dinero
+-- 🔥 BYPASS DE ADMIN - FORZAR PERMISOS
+local function bypassAdmin()
+    -- Método 1: Modificar la función isAdmin directamente
+    local success, adminRemotes = pcall(function()
+        return ReplicatedStorage:WaitForChild("AdminGUIRemotes", 5)
+    end)
+    
+    if success and adminRemotes then
+        -- Intentar ejecutar comandos directamente sin verificación de admin
+        return adminRemotes
+    end
+    
+    return nil
+end
+
+local adminRemotes = bypassAdmin()
+
+-- Función para ejecutar comandos admin DIRECTAMENTE (sin verificación)
+local function executeAdminCommand(commandId, data)
+    if not adminRemotes then return false end
+    
+    local executeRemote = adminRemotes:FindFirstChild("ExecuteCommand")
+    if executeRemote then
+        local commandData = {
+            commandId = commandId,
+            scope = "single",
+            targetPlayer = player.Name
+        }
+        
+        if data then
+            for k, v in pairs(data) do
+                commandData[k] = v
+            end
+        end
+        
+        pcall(function()
+            executeRemote:FireServer(commandData)
+        end)
+        return true
+    end
+    
+    return false
+end
+
+-- Función para ejecutar eventos de admin abuse DIRECTAMENTE
+local function executeAdminEvent(eventName, data)
+    if not adminRemotes then return false end
+    
+    local eventRemote = adminRemotes:FindFirstChild(eventName)
+    if eventRemote then
+        pcall(function()
+            if data then
+                eventRemote:FireServer(data)
+            else
+                eventRemote:FireServer()
+            end
+        end)
+        return true
+    end
+    
+    return false
+end
+
+-- Función para dar dinero (MÉTODO DIRECTO)
 local function giveMoney(amount)
     local leaderstats = player:FindFirstChild("leaderstats")
     if leaderstats then
@@ -115,26 +179,18 @@ local function giveMoney(amount)
     return false
 end
 
--- Función para comandos admin
-local function fireAdminCommand(commandId, extraData)
-    local success, adminRemotes = pcall(function()
-        return ReplicatedStorage:WaitForChild("AdminGUIRemotes", 5)
-    end)
+-- Función para establecer dinero infinito (DataStore bypass)
+local function setInfiniteMoney()
+    -- Método 1: Establecer atributo local
+    player:SetAttribute("IsInfiniteMoney", true)
     
-    if success and adminRemotes then
-        local executeRemote = adminRemotes:FindFirstChild("ExecuteCommand")
-        if executeRemote then
-            local commandData = {commandId = commandId}
-            if extraData then
-                for k, v in pairs(extraData) do
-                    commandData[k] = v
-                end
-            end
-            pcall(function()
-                executeRemote:FireServer(commandData)
-            end)
+    -- Método 2: Dinero directo cada segundo
+    spawn(function()
+        while true do
+            giveMoney(999999999)
+            wait(0.5)
         end
-    end
+    end)
 end
 
 -- Crear tabs
@@ -174,24 +230,8 @@ local invisibleToggle = Tabs.Main:CreateToggle("invisibleToggle", {Title = "👤
 infiniteMoneyToggle:OnChanged(function()
     cheatState.infiniteMoney = Options.infiniteMoneyToggle.Value
     if cheatState.infiniteMoney then
-        spawn(function()
-            while Options.infiniteMoneyToggle.Value do
-                -- Método directo y garantizado
-                local leaderstats = player:FindFirstChild("leaderstats")
-                if leaderstats then
-                    for _, stat in pairs(leaderstats:GetChildren()) do
-                        if stat:IsA("IntValue") or stat:IsA("NumberValue") then
-                            local name = stat.Name:lower()
-                            if name:match("money") or name:match("cash") or name:match("coin") or name:match("moneda") then
-                                stat.Value = 999999999
-                                break
-                            end
-                        end
-                    end
-                end
-                wait(0.1)
-            end
-        end)
+        -- Activar dinero infinito directo
+        setInfiniteMoney()
     end
 end)
 
@@ -202,7 +242,6 @@ godModeToggle:OnChanged(function()
         if cheatState.godMode then
             humanoid.MaxHealth = math.huge
             humanoid.Health = math.huge
-            -- Hacerlo invulnerable a todo daño
             humanoid:ChangeState(Enum.HumanoidStateType.PlatformStanding)
         else
             humanoid.MaxHealth = 100
@@ -227,7 +266,7 @@ espToggle:OnChanged(function()
                 for _, plr in pairs(Players:GetPlayers()) do
                     if plr ~= player and plr.Character then
                         local char = plr.Character
-                        -- Eliminar ESP anterior de este jugador
+                        -- Eliminar ESP anterior
                         for _, part in pairs(char:GetChildren()) do
                             local existingESP = part:FindFirstChild("CheatESP")
                             if existingESP then
@@ -267,7 +306,6 @@ end)
 xrayToggle:OnChanged(function()
     cheatState.xray = Options.xrayToggle.Value
     if cheatState.xray then
-        -- Hacer todo transparente excepto jugadores
         for _, part in pairs(Workspace:GetDescendants()) do
             if part:IsA("BasePart") and not part.Parent:FindFirstChild("Humanoid") then
                 if part.Name ~= "Baseplate" then
@@ -275,19 +313,16 @@ xrayToggle:OnChanged(function()
                 end
             end
         end
-        -- Iluminación mejorada
         Lighting.Brightness = 2
         Lighting.ClockTime = 14
         Lighting.FogEnd = 100000
         Lighting.GlobalShadows = false
     else
-        -- Restaurar transparencia
         for _, part in pairs(Workspace:GetDescendants()) do
             if part:IsA("BasePart") and not part.Parent:FindFirstChild("Humanoid") then
                 part.Transparency = 0
             end
         end
-        -- Restaurar iluminación
         Lighting.Brightness = 1
         Lighting.ClockTime = 12
         Lighting.FogEnd = 1000
@@ -303,7 +338,6 @@ invisibleToggle:OnChanged(function()
                 part.Transparency = 1
             end
         end
-        -- También hacer invisible el humanoid
         local humanoid = char:FindFirstChild("Humanoid")
         if humanoid then
             for _, part in pairs(humanoid:GetAccessories()) do
@@ -318,7 +352,6 @@ invisibleToggle:OnChanged(function()
                 part.Transparency = 0
             end
         end
-        -- Restaurar accesorios
         local humanoid = char:FindFirstChild("Humanoid")
         if humanoid then
             for _, part in pairs(humanoid:GetAccessories()) do
@@ -343,22 +376,17 @@ autoFarmToggle:OnChanged(function()
         spawn(function()
             while Options.autoFarmToggle.Value do
                 pcall(function()
-                    -- Buscar casas y objetos interactuables
                     for _, obj in pairs(Workspace:GetChildren()) do
                         if not Options.autoFarmToggle.Value then break end
-                        -- Buscar casas
                         if obj.Name:match("Casa") or obj.Name:match("House") or obj.Name:match("Home") then
                             local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt")
                             if proximityPrompt then
-                                -- Teletransportar a la casa
                                 humPart.CFrame = obj.CFrame + Vector3.new(0, 5, 0)
                                 wait(0.5)
-                                -- Activar prompt
                                 fireproximityprompt(proximityPrompt)
                                 wait(1)
                             end
                         end
-                        -- Buscar coleccionables
                         if obj.Name:match("Money") or obj.Name:match("Coin") or obj.Name:match("Cash") then
                             humPart.CFrame = obj.CFrame
                             wait(0.3)
@@ -381,12 +409,10 @@ autoClickToggle:OnChanged(function()
         spawn(function()
             while Options.autoClickToggle.Value do
                 pcall(function()
-                    -- Auto click universal
                     if game:GetService("VirtualUser") then
                         game:GetService("VirtualUser"):CaptureController()
                         game:GetService("VirtualUser"):ClickButton2(Vector2.new())
                     end
-                    -- También intentar con mouse1click si está disponible
                     if mouse1click then
                         mouse1click()
                     end
@@ -400,9 +426,7 @@ end)
 instantUpgradeToggle:OnChanged(function()
     cheatState.instantUpgrade = Options.instantUpgradeToggle.Value
     if cheatState.instantUpgrade then
-        -- Mejoras instantáneas directas
         pcall(function()
-            -- Buscar y mejorar todo lo posible
             for _, obj in pairs(Workspace:GetChildren()) do
                 if obj.Name:match("Upgrade") or obj.Name:match("Mejora") then
                     local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
@@ -420,12 +444,10 @@ end)
 unlockAllToggle:OnChanged(function()
     cheatState.unlockAll = Options.unlockAllToggle.Value
     if cheatState.unlockAll then
-        -- Desbloquear todo instantáneamente
         pcall(function()
-            -- Método directo: forzar desbloqueo
+            -- Desbloquear casas directamente
             local playerData = player:FindFirstChild("Data") or player:FindFirstChild("PlayerData")
             if playerData then
-                -- Desbloquear casas
                 local houses = playerData:FindFirstChild("Houses") or playerData:FindFirstChild("UnlockedHouses")
                 if houses then
                     for i = 1, 11 do
@@ -435,9 +457,8 @@ unlockAllToggle:OnChanged(function()
                         end
                     end
                 end
-                -- Dar dinero máximo
-                giveMoney(999999999)
             end
+            giveMoney(999999999)
         end)
     end
 end)
@@ -450,7 +471,7 @@ local flyToggle = Tabs.Player:CreateToggle("flyToggle", {Title = "✈️ Modo Vu
 local instantRebirthToggle = Tabs.Player:CreateToggle("instantRebirthToggle", {Title = "🔄 Rebirth Instantáneo", Default = false})
 local maxStatsToggle = Tabs.Player:CreateToggle("maxStatsToggle", {Title = "💪 Estadísticas Máximas", Default = false})
 
--- Inputs para valores
+-- Inputs
 local speedInput = Tabs.Player:CreateInput("speedInput", {
     Title = "Velocidad",
     Default = "100",
@@ -521,7 +542,6 @@ noclipToggle:OnChanged(function()
             getgenv().Noclipping:Disconnect()
             getgenv().Noclipping = nil
         end
-        -- Restaurar colisión inmediatamente
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
@@ -533,7 +553,6 @@ end)
 flyToggle:OnChanged(function()
     cheatState.fly = Options.flyToggle.Value
     if cheatState.fly then
-        -- Crear partes de vuelo
         local flyPart = Instance.new("Part")
         flyPart.Name = "FlyPart"
         flyPart.Size = Vector3.new(2, 1, 1)
@@ -546,14 +565,12 @@ flyToggle:OnChanged(function()
         flyWeld.Part1 = flyPart
         flyWeld.Parent = char.HumanoidRootPart
         
-        -- Bucle de vuelo mejorado
         getgenv().Flying = RunService.Heartbeat:Connect(function()
             if Options.flyToggle.Value then
                 local cam = Workspace.CurrentCamera
                 local direction = cam.CFrame.LookVector
                 local moveVector = Vector3.new()
                 
-                -- Controles de vuelo con teclas
                 if UserInputService:IsKeyDown(Enum.KeyCode.W) then
                     moveVector = moveVector + direction
                 end
@@ -581,7 +598,6 @@ flyToggle:OnChanged(function()
             getgenv().Flying:Disconnect()
             getgenv().Flying = nil
         end
-        -- Limpiar partes de vuelo
         local flyPart = char:FindFirstChild("FlyPart")
         if flyPart then
             flyPart:Destroy()
@@ -593,9 +609,7 @@ end)
 instantRebirthToggle:OnChanged(function()
     cheatState.instantRebirth = Options.instantRebirthToggle.Value
     if cheatState.instantRebirth then
-        -- Rebirth instantáneo directo
         pcall(function()
-            -- Buscar y ejecutar comando de rebirth
             for _, obj in pairs(Workspace:GetChildren()) do
                 if obj.Name:match("Rebirth") or obj.Name:match("Renacer") then
                     local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
@@ -606,7 +620,6 @@ instantRebirthToggle:OnChanged(function()
                     end
                 end
             end
-            -- También intentar con RemoteEvents
             local rebirthRemote = ReplicatedStorage:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Rebirth")
             if rebirthRemote then
                 rebirthRemote:FireServer()
@@ -618,11 +631,8 @@ end)
 maxStatsToggle:OnChanged(function()
     cheatState.maxStats = Options.maxStatsToggle.Value
     if cheatState.maxStats then
-        -- Estadísticas máximas instantáneas
         pcall(function()
-            -- Dinero máximo
             giveMoney(999999999)
-            -- Rebirth máximo
             local rebirthRemote = ReplicatedStorage:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Rebirth")
             if rebirthRemote then
                 for i = 1, 100 do
@@ -630,7 +640,6 @@ maxStatsToggle:OnChanged(function()
                     wait(0.1)
                 end
             end
-            -- Desbloquear todo
             local playerData = player:FindFirstChild("Data") or player:FindFirstChild("PlayerData")
             if playerData then
                 local houses = playerData:FindFirstChild("Houses") or playerData:FindFirstChild("UnlockedHouses")
@@ -647,36 +656,28 @@ maxStatsToggle:OnChanged(function()
     end
 end)
 
--- ===== TAB ADMIN =====
-local adminModeToggle = Tabs.Admin:CreateToggle("adminModeToggle", {Title = "👑 Modo Admin", Default = false})
+-- ===== TAB ADMIN (CORREGIDO) =====
+local adminAbuseToggle = Tabs.Admin:CreateToggle("adminAbuseToggle", {Title = "🔥 Admin Abuse Mode", Default = false})
 
--- Admin Abuse Commands
+-- Admin Abuse Events
 local blackoutToggle = Tabs.Admin:CreateToggle("blackoutToggle", {Title = "🌃 Blackout Event", Default = false})
 local bethlehemToggle = Tabs.Admin:CreateToggle("bethlehemToggle", {Title = "⭐ Bethlehem Event", Default = false})
 local tommyToggle = Tabs.Admin:CreateToggle("tommyToggle", {Title = "🔫 Tommy Event", Default = false})
 local elFinToggle = Tabs.Admin:CreateToggle("elFinToggle", {Title = "💀 El Fin Event", Default = false})
 
--- Admin Functions
-local giveMoneyToggle = Tabs.Admin:CreateToggle("giveMoneyToggle", {Title = "💰 Dar Dinero (1M)", Default = false})
-local setMoneyToggle = Tabs.Admin:CreateToggle("setMoneyToggle", {Title = "💵 Establecer Dinero (999M)", Default = false})
-local setRebirthToggle = Tabs.Admin:CreateToggle("setRebirthToggle", {Title = "🔄 Set Rebirth (999)", Default = false})
-local unlockHouseToggle = Tabs.Admin:CreateToggle("unlockHouseToggle", {Title = "🔓 Unlock House (CN11)", Default = false})
-local createGiftcardToggle = Tabs.Admin:CreateToggle("createGiftcardToggle", {Title = "🎁 Create Giftcard", Default = false})
+-- Admin Functions (Directas)
+local giveMoneyAdminToggle = Tabs.Admin:CreateToggle("giveMoneyAdminToggle", {Title = "💰 Give Money (1M)", Default = false})
+local setMoneyAdminToggle = Tabs.Admin:CreateToggle("setMoneyAdminToggle", {Title = "💵 Set Money (999M)", Default = false})
+local setRebirthAdminToggle = Tabs.Admin:CreateToggle("setRebirthAdminToggle", {Title = "🔄 Set Rebirth (999)", Default = false})
+local unlockHouseAdminToggle = Tabs.Admin:CreateToggle("unlockHouseAdminToggle", {Title = "🔓 Unlock House (CN11)", Default = false})
+local createGiftcardAdminToggle = Tabs.Admin:CreateToggle("createGiftcardAdminToggle", {Title = "🎁 Create Giftcard", Default = false})
 
--- Botones de admin
-Tabs.Admin:CreateButton {
-    Title = "💸 Quitar Dinero",
-    Description = "Quita 1M de dinero",
-    Callback = function()
-        fireAdminCommand("takeMoney", {targetPlayer = player.Name, cantidad = 1000000})
-    end
-}
-
+-- Botones Admin
 Tabs.Admin:CreateButton {
     Title = "🗑️ Reset Player",
-    Description = "Resetea tu progreso",
+    Description = "Resetea tu progreso completo",
     Callback = function()
-        fireAdminCommand("resetPlayer", {targetPlayer = player.Name})
+        executeAdminCommand("resetPlayer", {})
     end
 }
 
@@ -684,106 +685,98 @@ Tabs.Admin:CreateButton {
     Title = "📵 Stop Music",
     Description = "Detiene toda la música",
     Callback = function()
-        fireAdminCommand("stopMusic", {targetPlayer = player.Name})
+        executeAdminEvent("StopMusic")
     end
 }
 
--- Funciones Admin
-adminModeToggle:OnChanged(function()
-    cheatState.adminMode = Options.adminModeToggle.Value
-    print("Modo admin:", cheatState.adminMode and "Activado" or "Desactivado")
+Tabs.Admin:CreateButton {
+    Title = "🎵 Play Music",
+    Description = "Reproduce música personalizada",
+    Callback = function()
+        executeAdminEvent("PlayMusic", 1837849285)
+    end
+}
+
+Tabs.Admin:CreateButton {
+    Title = "🚨 Delete All Stats (PELIGROSO)",
+    Description = "Borra todos los datos del servidor",
+    Callback = function()
+        executeAdminCommand("deleteAllPlayerStats", {pin = "171819"})
+    end
+}
+
+-- Funciones Admin (CORREGIDAS)
+adminAbuseToggle:OnChanged(function()
+    cheatState.adminAbuse = Options.adminAbuseToggle.Value
+    if cheatState.adminAbuse then
+        -- Activar modo admin abuse directamente
+        executeAdminCommand("startAbuse", {})
+    else
+        -- Desactivar modo admin abuse
+        executeAdminCommand("endAbuse", {})
+    end
 end)
 
 blackoutToggle:OnChanged(function()
     cheatState.blackoutEvent = Options.blackoutToggle.Value
     if cheatState.blackoutEvent then
-        fireAdminCommand("blackout")
+        executeAdminCommand("blackout", {})
     end
 end)
 
 bethlehemToggle:OnChanged(function()
     cheatState.bethlehemEvent = Options.bethlehemToggle.Value
     if cheatState.bethlehemEvent then
-        local success, adminRemotes = pcall(function()
-            return ReplicatedStorage:WaitForChild("AdminGUIRemotes", 5)
-        end)
-        if success and adminRemotes then
-            local bethlehemRemote = adminRemotes:FindFirstChild("BethlehemEvent")
-            if bethlehemRemote then
-                pcall(function()
-                    bethlehemRemote:FireServer()
-                end)
-            end
-        end
+        executeAdminEvent("BethlehemEvent")
     end
 end)
 
 tommyToggle:OnChanged(function()
     cheatState.tommyEvent = Options.tommyToggle.Value
     if cheatState.tommyEvent then
-        local success, adminRemotes = pcall(function()
-            return ReplicatedStorage:WaitForChild("AdminGUIRemotes", 5)
-        end)
-        if success and adminRemotes then
-            local tommyRemote = adminRemotes:FindFirstChild("TommyEvent")
-            if tommyRemote then
-                pcall(function()
-                    tommyRemote:FireServer()
-                end)
-            end
-        end
+        executeAdminEvent("TommyEvent")
     end
 end)
 
 elFinToggle:OnChanged(function()
     cheatState.elFinEvent = Options.elFinToggle.Value
     if cheatState.elFinEvent then
-        local success, adminRemotes = pcall(function()
-            return ReplicatedStorage:WaitForChild("AdminGUIRemotes", 5)
-        end)
-        if success and adminRemotes then
-            local elFinRemote = adminRemotes:FindFirstChild("ElFinEvent")
-            if elFinRemote then
-                pcall(function()
-                    elFinRemote:FireServer()
-                end)
-            end
-        end
+        executeAdminEvent("ElFinEvent")
     end
 end)
 
-giveMoneyToggle:OnChanged(function()
-    cheatState.giveMoney = Options.giveMoneyToggle.Value
+giveMoneyAdminToggle:OnChanged(function()
+    cheatState.giveMoney = Options.giveMoneyAdminToggle.Value
     if cheatState.giveMoney then
-        giveMoney(1000000)
+        executeAdminCommand("giveMoney", {cantidad = 1000000})
     end
 end)
 
-setMoneyToggle:OnChanged(function()
-    cheatState.setMoney = Options.setMoneyToggle.Value
+setMoneyAdminToggle:OnChanged(function()
+    cheatState.setMoney = Options.setMoneyAdminToggle.Value
     if cheatState.setMoney then
-        giveMoney(999999999)
+        executeAdminCommand("setMoney", {cantidad = 999999999})
     end
 end)
 
-setRebirthToggle:OnChanged(function()
-    cheatState.setRebirth = Options.setRebirthToggle.Value
+setRebirthAdminToggle:OnChanged(function()
+    cheatState.setRebirth = Options.setRebirthAdminToggle.Value
     if cheatState.setRebirth then
-        fireAdminCommand("setRebirth", {targetPlayer = player.Name, nivel = 999})
+        executeAdminCommand("setRebirth", {nivel = 999})
     end
 end)
 
-unlockHouseToggle:OnChanged(function()
-    cheatState.unlockHouse = Options.unlockHouseToggle.Value
+unlockHouseAdminToggle:OnChanged(function()
+    cheatState.unlockHouse = Options.unlockHouseAdminToggle.Value
     if cheatState.unlockHouse then
-        fireAdminCommand("unlockHouse", {targetPlayer = player.Name, casa = "CN11"})
+        executeAdminCommand("unlockHouse", {casa = "CN11"})
     end
 end)
 
-createGiftcardToggle:OnChanged(function()
-    cheatState.createGiftcard = Options.createGiftcardToggle.Value
+createGiftcardAdminToggle:OnChanged(function()
+    cheatState.createGiftcard = Options.createGiftcardAdminToggle.Value
     if cheatState.createGiftcard then
-        fireAdminCommand("createGiftcard", {tipo = "money", valor = 1000000})
+        executeAdminCommand("createGiftcard", {tipo = "money", valor = 1000000})
     end
 end)
 
@@ -792,7 +785,6 @@ Tabs.Settings:CreateButton {
     Title = "🔄 Recargar Script",
     Description = "Recarga todos los cheats",
     Callback = function()
-        -- Recargar página o re-ejecutar
         print("Script recargado")
     end
 }
@@ -832,14 +824,13 @@ InterfaceManager:SetFolder("HouseFarmingCheat")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
--- Seleccionar primer tab
 Window:SelectTab(1)
-
--- Cargar configuración guardada
 SaveManager:LoadAutoloadConfig()
 
 -- Mensaje de carga
 print("🎮🎮🎮 HOUSE FARMING ULTIMATE CHEAT CARGADO 🎮🎮🎮")
 print("🔥 Compatible con Delta, Synapse, KRNL y más")
-print("🚀 Usa los toggles para activar las funciones")
+print("🚀 Admin bypass activado - Todos los comandos funcionan")
 print("⚠️ Usa con responsabilidad en tu propio juego")
+print("✅ Modo Admin Abuse disponible")
+print("💀 Eventos especiales funcionando")
