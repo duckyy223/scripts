@@ -479,6 +479,7 @@ local jumpInput = Tabs.Player:CreateInput("jumpInput", {
             end
         end
     end
+})
 
 -- Funciones Player
 speedToggle:OnChanged(function()
